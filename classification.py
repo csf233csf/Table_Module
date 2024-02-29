@@ -15,6 +15,8 @@ class TableProcessor:
         self.output_long_html = os.path.join(output_folder, 'output_for_long_tables.html')
         
         self.output_test_html = os.path.join(output_folder,'output_for_new_type.html')
+        # 我个人做完一个类型的大致筛选会输出到这儿
+        
         
         self.counters = {'total': 0, 'answer': 0, 'blank': 0, 'normal': 0, 'long': 0}
         self.regex_long_table = [
@@ -32,6 +34,8 @@ class TableProcessor:
         self.regex_blank = r"\.|次|#|题|目|号|序|l|阅卷人|题号|题目|合分人|评卷人|答案|分数|班级|姓名|成绩|密封线内不答|得分|评卷|选项|座号|总分人|总分|选择题|座位号|批卷人|结分人|核分人|计分人|共\d+分|复评人|核分人|分析说明|综合探究|卷面分|辨析|简答|多选|学科王|第.部分|-|—|Ⅰ|Ⅱ|（|）|～|Â|[一二三四五六七八九十]|[1-9]\d*"
         # Trace to *def is_blank_table
         
+        
+        # ** 可以把基本所有很长的Regex或者Keyword都放在__init__ **
         
     # 空白表格 一筛
     # 通过一些关键字，style，html tag和regex去筛选空白表格
@@ -51,7 +55,7 @@ class TableProcessor:
                 return False
     
         for span_tag in soup_copy.find_all('span'):
-            if "color:#ffffff" in str(span_tag.get('style', '')) and not ("background-color:#ffffff" in str(span_tag.get('style', '')) or "background-color:#000080" in str(span_tag.get('style', ''))):
+            if "color:#ffffff" in str(span_tag.get('style', '')) and not ("background-color:#ffffff" in str(span_tag.get('style', '')) or "background-color:#000080" in str(span_tag.get('style', ''))): # 再考虑一下其他颜色的情况
                 span_tag.decompose()
 
         for img_tag in soup_copy.find_all("img"):
@@ -72,7 +76,8 @@ class TableProcessor:
                 return True
         
         if bool(re.fullmatch(r'[wW]{0,3}', text_clean)):
-            return True # 如果只剩下一个w，或者2个w，基本上是水印，可以认定为空白表格
+            return True # 如果只剩下一个w，或者2个w，基本上是水印，可以认定为空白表 
+                        # 这边以后优化好了水印module可以不用 MARK一下**
         
         return False
     
@@ -92,7 +97,8 @@ class TableProcessor:
             self.classify_and_save(table)
     
     # 空白表格二筛
-    # 通过计算百分比，用于筛选答案表格之后进行二筛
+    # 通过计算空白表格的数量占多少百分比，用于筛选 答案表格 之后进行二筛
+    # 这个函数其实在完善了空白表格 is_blank_table 之后可能没有必要
     def is_blank_table_2(self, table): 
         
         total_cells = 0
@@ -129,18 +135,18 @@ class TableProcessor:
         
         
         Ans_type1 = re.search('答案', text) is not None and re.search('题号', text) is not None
-        if Ans_type1:
+        if Ans_type1: # 第一种情况，只带答案和题号，并且没有其他中文字符
             text_without_keywords = text.replace('答案', '').replace('题号', '')
             other_chinese_chars = re.findall('[\u4e00-\u9fff]', text_without_keywords)
             if not other_chinese_chars:
                 return True
         
         Ans_type2 = bool(re.match(r'^(?=.*[A-Z])(?=.*[0-9])[A-Z0-9.]*$', text)) and not re.search('[\u4e00-\u9fff]', text)
-        if Ans_type2:
+        if Ans_type2: # 第二种情况，有字母/数字，没有任何其他别的中文字符 （不太好，只是暂时思路）
             return True
         
         Ans_type3 = re.search('答案', text) is not None and re.search('题目', text) is not None
-        if Ans_type3:
+        if Ans_type3: # 第三种情况，答案 和 题目，没有其他中文字符 （其实类似这种很多，应该做个表放innit
             text_without_keywords3 = text.replace('答案', '').replace('题目', '')
             other_chinese_chars3 = re.findall('[\u4e00-\u9fff]', text_without_keywords3)
             if not other_chinese_chars3:
@@ -149,8 +155,9 @@ class TableProcessor:
         text_clean = re.sub(self.regex_blank, "", text).strip() # trace back to innit/
         text_clean = re.sub(r'[\[\]]', '', text_clean).strip() # removes all []
         text_clean = re.sub(r'[\uFF01-\uFF5E]','',text_clean).strip() # removes all full-width English character.
+                                                                      # 这个貌似还挺重要
         
-        # Sick General Check, maybe wrong, NEED TESTING
+        # Sick General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
         if bool(re.search(r"^[a-fA-F]+$",text_clean)):
             print(text_clean)
             print('sick')
@@ -226,7 +233,7 @@ class TableProcessor:
                 input_html = os.path.join(self.input_folder, filename)
                 self.extract_tables(input_html)
                 self.output_statistics()        
-        
+
 
 if __name__ == '__main__':
     
