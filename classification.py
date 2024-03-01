@@ -2,7 +2,9 @@ import os
 from bs4 import BeautifulSoup
 import re
 from tqdm import tqdm
-import htmlmarker # 去水印
+from datetime import datetime
+import pytz
+# import htmlmarker # 去水印
 
 
 class TableProcessor:
@@ -17,6 +19,7 @@ class TableProcessor:
         # 我个人做完一个类型的大致筛选会输出到这儿
         
         self.counters = {'total': 0, 'answer': 0, 'blank': 0, 'normal': 0, 'long': 0}
+        
         self.regex_long_table = [
             '教学过程', '教学目标', '范文展示', '选择题', '学生活动', '设计意图', '学情分析', '教学重难点', '教师活动',
             '课题', '综合题', '教材分析', '教学环节', '授课时间', '教学器材', '学习目标', '教学辅助', '病文展示', '升格作文',
@@ -29,13 +32,12 @@ class TableProcessor:
             '授课教材', '授课题目', '主题情境', '内容分析', '教学反思', '教学重与难点', '真题展示', '题型特点', '考查要点', '试题来源'
         ]    # Trace to is_long_table not used yet. 还未投入使用
         
-        self.regex_blank = r"填空|计算|实验|探究|选择|密封线内不答|综合探究|家长签字|学生签字|分析说明|卷面分|学科王|评卷人|批卷人|复核人|结分人|计分人|复评人|核分人|累分人|合分人|总分人|阅卷人|选择题|座位号|简答|多选|辨析|第.部分|共\d+分|化学|物理|合计|姓名|班级|成绩|得分|评卷|选项|座号|总分|分值|题号|题目|答案|分数|Ⅰ|Ⅱ|—|、|～|Â|（|）|\.|\．|#|l|科|扣|卷|面|分|次|号|序|目|题|栏|-|[一二三四五六七八九十]|[1-9]\d*|~|[\u2460-\u2473]"
+        self.regex_blank = r"填空|计算|实验|探究|选择|密封线内不答|综合探究|家长签字|学生签字|分析说明|卷面分|学科王|评卷人|批卷人|复核人|结分人|计分人|复评人|核分人|累分人|合分人|总分人|阅卷人|选择题|座位号|简答|多选|辨析|第.部分|共\d+分|化学|物理|合计|姓名|班级|成绩|全卷|得分|评卷|选项|座号|总分|分值|题号|题目|答案|分数|Ⅰ|Ⅱ|—|、|～|Â|（|）|\.|\．|,|#|l|科|扣|卷|面|分|次|号|序|目|题|栏|初|核|人|复|-|第|[一二三四五六七八九十]|[1-9]\d*|~|[\u2460-\u2473]"
         # Trace to *def is_blank_table 用来删除赘余定义空白表格
         
         self.regex_answer = r'[\u2191\u2193]|△|、|&super.?END&|[+-]|[><=＜＞＝]|→|：|[\u2460-\u2473]|&sub.?END&|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|﹣|﹢|\(|\)|—|Ⅰ|Ⅱ|]|[|[一二三四五六七八九十]' 
         # 选择不删除数字 和 Dot
         
-        self.judge_answer_regex = r''
         
         # ** 可以把基本所有很长的Regex或者Keyword都放在__init__ **
         
@@ -44,18 +46,19 @@ class TableProcessor:
     def is_blank_table(self, table):
         parsed_table = str(table)
         soup_copy = BeautifulSoup(parsed_table, 'lxml') # create a copy, we want to return the full table.
-
+        
         if re.fullmatch(r'(<[^<>]*?>|\s)+', parsed_table):
             return True
         if "007.png" in parsed_table or "TABLE_PROTECT" in parsed_table: # 极端情况 ** Protected table不管
             return False
-        if len(soup_copy.find_all('tr')) > 3 or len(soup_copy.find_all('p')) > 100:
+        if len(soup_copy.find_all('tr')) > 5 or len(soup_copy.find_all('p')) > 100:
+            print(1) # 过长的Table或者是p tag过多的table，不是空白表格
             return False
         
         for p_tag in soup_copy.find_all('p'): # 另一种极端情况，p段背景颜色为蓝色
             if "background-color:#000080" in str(p_tag.get('style', '')):
                 return False
-    
+            
         for span_tag in soup_copy.find_all('span'):
             if "color:#ffffff" in str(span_tag.get('style', '')) and not ("background-color:#ffffff" in str(span_tag.get('style', '')) or "background-color:#000080" in str(span_tag.get('style', ''))): # 再考虑一下其他颜色的情况
                 span_tag.decompose()
@@ -72,11 +75,7 @@ class TableProcessor:
         text_clean = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text_clean).strip()
         
         text_clean = re.sub(self.regex_blank, "", text_clean).strip() # trace back to innit/
-
-
-        print(text_clean)
-
-
+        
         if text_clean == "" or re.search(r"条形码粘贴处|准考证", text_clean):
             if img_count <= 2:
                 return True
@@ -97,8 +96,10 @@ class TableProcessor:
         for table in tqdm(tables, desc=f"Processing Tables: {os.path.basename(input_html)}"):
             self.counters['total'] += 1
             
-            if table.find('img') or table.find('table'):
-                continue  # Skip tables with images or nested tables for now
+            
+            # 不跳过嵌套和图片表格，直接操作
+            #if table.find('img') or table.find('table'):
+            #    continue  # Skip tables with images or nested tables for now
             
             self.classify_and_save(table)
     
@@ -137,17 +138,16 @@ class TableProcessor:
         if bool(re.search('√', text)) and not re.findall('[\u4e00-\u9fff]', text) : # 特殊极端情况，带√的
             return True
         
+       
         Ans_type1 = re.search('答案', text) is not None and re.search('题号', text) is not None
         if Ans_type1: # 第一种情况，只带答案和题号，并且没有其他中文字符
             text_without_keywords = text.replace('答案', '').replace('题号', '')
             other_chinese_chars = re.findall('[\u4e00-\u9fff]', text_without_keywords)
             if not other_chinese_chars:
                 return True
-        
-        Ans_type2 = bool(re.match(r'^(?=.*[A-Z])(?=.*[0-9])[A-Z0-9.]*$', text)) and not re.search('[\u4e00-\u9fff]', text)
-        if Ans_type2: # 第二种情况，有字母/数字，没有任何其他别的中文字符 （不太好，只是暂时思路）
-            return True
-        
+       
+        # Deleted type 2     
+            
         Ans_type3 = re.search('答案', text) is not None and re.search('题目', text) is not None
         if Ans_type3: # 第三种情况，答案 和 题目，没有其他中文字符 （其实类似这种很多，应该做个表放innit
             text_without_keywords3 = text.replace('答案', '').replace('题目', '')
@@ -163,18 +163,18 @@ class TableProcessor:
         # General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
         if re.search('[\u4e00-\u9fff]',text_clean):
             return False
-
+        
         if '．' in text_clean: # 注意全角的 dot
             if re.match(r'[A-D]\．\d',text_clean) or re.match(r'[A-D]\.\d',text_clean): # 数字. A ，为选项table
                 return False
-            elif re.match(r'[A-E]\．[A-Z]',text_clean) or re.match(r'[A-D]\．[A-D]', text_clean): # 字母. 字母 选项
+            elif re.match(r'[A-D]\．[A-Z]',text_clean) or re.match(r'[A-D]\．[A-D]', text_clean): # 字母. 字母 选项
                 return False
-            elif not re.match(r'[A-D]',text_clean):
-                return False
+            elif re.search(r'[A-D]',text_clean) is None:
+                return False # 没有ABCD
             elif re.match(r'[A-Z]．[a-zA-Z0-9]+',text_clean):
                 return False # A．xy11B．xy12C．xy14D．xy21
             else:
-                print("what's left",text_clean)
+                print("what's left answer table",text_clean)
                 return True
         elif bool(re.search(r"^(?=.*[a-zA-Z])([0-9])+$",text_clean)):
             return True
@@ -233,6 +233,8 @@ class TableProcessor:
             for table_type, count in self.counters.items():
                 if table_type != 'total':
                     file.write(f"<p>{table_type.capitalize()} tables: {count}</p>")
+            time_now = datetime.now(pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M:%S')
+            file.write(f"<p>Ending time: {time_now}</p>")
             file.write("</body></html>")
     
     # Processor Function，用来遍历folder中的html文件并且pass html文件给extract table function
