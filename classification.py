@@ -32,12 +32,11 @@ class TableProcessor:
             '授课教材', '授课题目', '主题情境', '内容分析', '教学反思', '教学重与难点', '真题展示', '题型特点', '考查要点', '试题来源'
         ]    # Trace to is_long_table not used yet. 还未投入使用
         
-        self.regex_blank = r"填空|计算|实验|探究|选择|密封线内不答|综合探究|家长签字|学生签字|分析说明|卷面分|学科王|评卷人|批卷人|复核人|结分人|计分人|复评人|核分人|累分人|合分人|总分人|阅卷人|选择题|座位号|简答|多选|辨析|第.部分|共\d+分|化学|物理|合计|姓名|班级|成绩|全卷|得分|评卷|选项|座号|总分|分值|题号|题目|答案|分数|Ⅰ|Ⅱ|—|、|～|Â|（|）|\.|\．|,|#|l|科|扣|卷|面|分|次|号|序|目|题|栏|初|核|人|复|-|第|[一二三四五六七八九十]|[1-9]\d*|~|[\u2460-\u2473]"
+        self.regex_blank = r"能力测试|水平测试|[A-Z]组|综合分析题|考场座位号|填空|计算|实验|探究|选择|密封线内不答|综合探究|家长签字|学生签字|分析说明|卷面分|学科王|评卷人|批卷人|复核人|结分人|计分人|附加题|复评人|核分人|累分人|合分人|总分人|阅卷人|选择题|座位号|简答|多选|辨析|第.部分|共\d+分|化学|物理|生物|合计|姓名|班级|成绩|全卷|得分|评卷|选项|座号|地理|连线|选择|材料|部分|总分|分值|题号|题目|答案|分数|Ⅰ|Ⅱ|Ⅲ|—|、|:|～|Â|（|）|\.|\．|\*|,|#|[+-]|﹣|﹢|l|科|扣|卷|面|图|分|次|号|序|目|题|栏|初|核|人|复|-|第|学|非|或|[一二三四五六七八九十]|[0-9]\d*|~|～|[\u2460-\u2473]|新|课|标|第|一|网|来|源|学|科|\]|\[|\||"
         # Trace to *def is_blank_table 用来删除赘余定义空白表格
         
-        self.regex_answer = r'[\u2191\u2193]|△|、|&super.?END&|[+-]|[><=＜＞＝]|→|：|[\u2460-\u2473]|&sub.?END&|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|﹣|﹢|\(|\)|—|Ⅰ|Ⅱ|]|[|[一二三四五六七八九十]' 
+        self.regex_answer = r'[\u2191\u2193]|△|、|&super.?END&|[+-]|[><=＜＞＝]|→|：|[\u2460-\u2473]|&sub.?END&|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|﹣|﹢|\(|\)|—|Ⅰ|Ⅱ|\]|\[|[一二三四五六七八九十]|新|课|标|第|一|网|来|源|学|科|\||'
         # 选择不删除数字 和 Dot
-        
         
         # ** 可以把基本所有很长的Regex或者Keyword都放在__init__ **
         
@@ -51,9 +50,12 @@ class TableProcessor:
             return True
         if "007.png" in parsed_table or "TABLE_PROTECT" in parsed_table: # 极端情况 ** Protected table不管
             return False
-        if len(soup_copy.find_all('tr')) > 5 or len(soup_copy.find_all('p')) > 100:
-            print(1) # 过长的Table或者是p tag过多的table，不是空白表格
-            return False
+        
+        
+        #  感觉用不着了
+        #if len(soup_copy.find_all('tr')) >= 7 or len(soup_copy.find_all('p')) > 100:
+        #    print(1) # 过长的Table或者是p tag过多的table，不是空白表格
+        #    return False
         
         for p_tag in soup_copy.find_all('p'): # 另一种极端情况，p段背景颜色为蓝色
             if "background-color:#000080" in str(p_tag.get('style', '')):
@@ -75,7 +77,7 @@ class TableProcessor:
         text_clean = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text_clean).strip()
         
         text_clean = re.sub(self.regex_blank, "", text_clean).strip() # trace back to innit/
-        
+        print(text_clean)
         if text_clean == "" or re.search(r"条形码粘贴处|准考证", text_clean):
             if img_count <= 2:
                 return True
@@ -83,7 +85,7 @@ class TableProcessor:
         if bool(re.fullmatch(r'[wW]{0,3}', text_clean)):
             return True # 如果只剩下一个w，或者2个w，基本上是水印，可以认定为空白表 
                         # 这边以后优化好了水印module可以不用 MARK一下**
-        
+        print(text_clean)
         return False
     
     # 从html中提取表格
@@ -164,6 +166,10 @@ class TableProcessor:
         if re.search('[\u4e00-\u9fff]',text_clean):
             return False
         
+        if '；' in text_clean:
+            return False
+        
+        
         if '．' in text_clean: # 注意全角的 dot
             if re.match(r'[A-D]\．\d',text_clean) or re.match(r'[A-D]\.\d',text_clean): # 数字. A ，为选项table
                 return False
@@ -173,12 +179,14 @@ class TableProcessor:
                 return False # 没有ABCD
             elif re.match(r'[A-Z]．[a-zA-Z0-9]+',text_clean):
                 return False # A．xy11B．xy12C．xy14D．xy21
+            elif re.search(r'[Mg|Li]',text_clean):
+                return False
             else:
                 print("what's left answer table",text_clean)
                 return True
-        elif bool(re.search(r"^(?=.*[a-zA-Z])([0-9])+$",text_clean)):
+        elif bool(re.search(r"^(?=.*[a-zA-Z])(?=.*\d).+$",text_clean)):
             return True
-        
+        print('final',text_clean)
         return False
     
     def is_long_table(self, table):

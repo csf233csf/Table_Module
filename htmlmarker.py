@@ -31,10 +31,14 @@ class HTMLMarker:
     '23': r'\[来源:学\+科\+网Z\+X\+X\+K\]',
     '24': r'新HXBLANK课HXBLANK标第HXBLANK一HXBLANK网',
     '25': r'\[来源:学&科&网Z&X&X&K\]\[来源来源:学*科*网Z*X*X*K\]',
-    '26' : r'\[来源:学&科&网Z&X&X&K\]'
-    	
-
-    
+    '26' : r'\[来源:学&科&网Z&X&X&K\]',
+    '27' : r'xk\|b\|1',
+    '28' : r'\[来源:学+科+网\]',
+    '29' : r'\[来源',
+    '30' : r'\[来源:学#科#网Z#X#X#K\]',
+    '31' : r'\[来源:学|科|网\]',
+    '32' : r'\*课标\*第\*一\*网',
+    '33' : r'\[来源:学,科,网\]'
     # 此处可以添加更多的regex patterns
                                 }
 
@@ -70,12 +74,15 @@ class HTMLMarker:
 
                 for p_element in p_elements:
                     span_elements = p_element.find_all('span') 
-                    # 把一些paragraph里面的span combine成text，方便我们locate被分割的水印
                     combined_text = ''.join(span.get_text() for span in span_elements)
-                    # 在结合的text中用regex search寻找，extract element if found
+                    # 检查是否存在匹配的正则表达式
                     if regex and re.search(regex, combined_text, re.IGNORECASE):
-                        p_element.extract()
-                        print(f"已清除水印: {combined_text} 文件名: {file_name}")
+        # 如果找到匹配，对每个span元素的文本进行替换
+                        for span in span_elements:
+                            original_text = span.get_text()
+                            new_text = re.sub(regex, '', original_text, flags=re.IGNORECASE)
+                            span.string = new_text
+                            print(f"已清除水印: {combined_text}, replaced with {new_text}")
 
         else:
             # 如果pass in了pattern key，则使用指定的regex
