@@ -14,7 +14,7 @@ class HTMLMarker:
             'custom_5' : r'\.c\s*o\s*m$',
             'custom_6' : r'x k b 1 . c o m',
             'custom_7' : r'xHXBLANKkHXBLANKbHXBLANK1',
-            
+            '8' : r'[来源:学。科。网Z。X。X。K]'
             # 此处可以添加更多的regex patterns
             # 使用hashtable来储存正则，如果pass in key，可以使用特定的regex去处理文件，如果不pass in则默认遍历所有的regex
         }

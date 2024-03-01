@@ -13,7 +13,6 @@ class TableProcessor:
         self.output_blank_html = os.path.join(output_folder, 'output_for_blank_tables.html')
         self.output_normal_html = os.path.join(output_folder, 'output_for_normal_tables.html')
         self.output_long_html = os.path.join(output_folder, 'output_for_long_tables.html')
-        
         self.output_test_html = os.path.join(output_folder,'output_for_new_type.html')
         # 我个人做完一个类型的大致筛选会输出到这儿
         
@@ -30,11 +29,11 @@ class TableProcessor:
             '授课教材', '授课题目', '主题情境', '内容分析', '教学反思', '教学重与难点', '真题展示', '题型特点', '考查要点', '试题来源'
         ]    # Trace to is_long_table not used yet. 还未投入使用
         
-        self.regex_blank = r"\.|\．|次|#|题|目|号|序|l|阅卷人|题号|题目|合分人|评卷人|答案|分数|班级|姓名|成绩|密封线内不答|得分|评卷|选项|座号|总分人|总分|选择题|座位号|批卷人|结分人|核分人|计分人|共\d+分|复评人|核分人|分析说明|综合探究|卷面分|辨析|简答|多选|学科王|第.部分|-|—|Ⅰ|Ⅱ|（|）|～|Â|[一二三四五六七八九十]|[1-9]\d*"
+        self.regex_blank = r"填空|计算|实验|探究|选择|密封线内不答|综合探究|家长签字|学生签字|分析说明|卷面分|学科王|评卷人|批卷人|复核人|结分人|计分人|复评人|核分人|累分人|合分人|总分人|阅卷人|选择题|座位号|简答|多选|辨析|第.部分|共\d+分|化学|物理|合计|姓名|班级|成绩|得分|评卷|选项|座号|总分|分值|题号|题目|答案|分数|Ⅰ|Ⅱ|—|、|～|Â|（|）|\.|\．|#|l|科|扣|卷|面|分|次|号|序|目|题|栏|-|[一二三四五六七八九十]|[1-9]\d*|~|[\u2460-\u2473]"
         # Trace to *def is_blank_table 用来删除赘余定义空白表格
         
-        self.regex_answer = r'得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|-|—|Ⅰ|Ⅱ|（|）|]|[|[一二三四五六七八九十]' 
-        # 选择不删除数字 
+        self.regex_answer = r'[\u2191\u2193]|△|、|&super.?END&|[+-]|[><=＜＞＝]|→|：|[\u2460-\u2473]|&sub.?END&|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|﹣|﹢|\(|\)|—|Ⅰ|Ⅱ|]|[|[一二三四五六七八九十]' 
+        # 选择不删除数字 和 Dot
         
         self.judge_answer_regex = r''
         
@@ -73,7 +72,11 @@ class TableProcessor:
         text_clean = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text_clean).strip()
         
         text_clean = re.sub(self.regex_blank, "", text_clean).strip() # trace back to innit/
-        
+
+
+        print(text_clean)
+
+
         if text_clean == "" or re.search(r"条形码粘贴处|准考证", text_clean):
             if img_count <= 2:
                 return True
@@ -131,11 +134,8 @@ class TableProcessor:
         text = ''.join(table.stripped_strings)
         text = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text).strip()
         
-        
-        
         if bool(re.search('√', text)) and not re.findall('[\u4e00-\u9fff]', text) : # 特殊极端情况，带√的
             return True
-        
         
         Ans_type1 = re.search('答案', text) is not None and re.search('题号', text) is not None
         if Ans_type1: # 第一种情况，只带答案和题号，并且没有其他中文字符
@@ -161,19 +161,24 @@ class TableProcessor:
         # 这个先不用，它会把 '.' 删掉
         
         # General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
-        
+        if re.search('[\u4e00-\u9fff]',text_clean):
+            return False
+
         if '．' in text_clean: # 注意全角的 dot
             if re.match(r'[A-D]\．\d',text_clean) or re.match(r'[A-D]\.\d',text_clean): # 数字. A ，为选项table
                 return False
-            elif re.match(r'[A-D]\．[A-D]',text_clean) or re.match(r'[A-D]\．[A-D]', text_clean):
+            elif re.match(r'[A-E]\．[A-Z]',text_clean) or re.match(r'[A-D]\．[A-D]', text_clean): # 字母. 字母 选项
                 return False
             elif not re.match(r'[A-D]',text_clean):
                 return False
+            elif re.match(r'[A-Z]．[a-zA-Z0-9]+',text_clean):
+                return False # A．xy11B．xy12C．xy14D．xy21
             else:
+                print("what's left",text_clean)
                 return True
         elif bool(re.search(r"^(?=.*[a-zA-Z])([0-9])+$",text_clean)):
             return True
-     
+        
         return False
     
     def is_long_table(self, table):
@@ -205,16 +210,9 @@ class TableProcessor:
             self.save_table(table, self.output_blank_html, 'blank')
         # 答案表格
         elif self.is_answer_table(table) is True:
-            if self.is_blank_table_2(table):
-                self.save_table(table, self.output_blank_html, 'blank')
-            else:
-                self.save_table(table, self.output_answer_html, 'answer')
-        # 长表格
-        elif self.is_answer_table(table) =='Sick': #TEST
-            self.save_table(table,self.output_test_html,'answer')
-            
+            self.save_table(table, self.output_answer_html, 'answer')
         elif self.is_long_table(table):
-            self.save_table(table, self.output_long_html, 'long')
+            self.save_table(table, self.output_long_html, 'long')            
         # 正常表格
         else:
             self.save_table(table, self.output_normal_html, 'normal')
@@ -244,8 +242,8 @@ class TableProcessor:
                 input_html = os.path.join(self.input_folder, filename)
                 self.extract_tables(input_html)
                 self.output_statistics()
-                break # 先只遍历一个文件        
-
+                break
+                
 
 if __name__ == '__main__':
     
