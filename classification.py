@@ -17,7 +17,6 @@ class TableProcessor:
         self.output_test_html = os.path.join(output_folder,'output_for_new_type.html')
         # 我个人做完一个类型的大致筛选会输出到这儿
         
-        
         self.counters = {'total': 0, 'answer': 0, 'blank': 0, 'normal': 0, 'long': 0}
         self.regex_long_table = [
             '教学过程', '教学目标', '范文展示', '选择题', '学生活动', '设计意图', '学情分析', '教学重难点', '教师活动',
@@ -29,11 +28,15 @@ class TableProcessor:
             '考查要点', '精彩看点', '课标要求', '本节教学内容', '本节教学目标', '本节教学重难点', '本节内容教学方法', '讲授法', '本节内容课时安排',
             '信息类型', '主题信息', '条件信息', '过程信息', '隐藏信息', '教学设计理念', '文本解读', '活动形式与步骤', '活动层次', '学习效果评价',
             '授课教材', '授课题目', '主题情境', '内容分析', '教学反思', '教学重与难点', '真题展示', '题型特点', '考查要点', '试题来源'
-        ]    # Trace to is_long_table not used yet.
+        ]    # Trace to is_long_table not used yet. 还未投入使用
         
-        self.regex_blank = r"\.|次|#|题|目|号|序|l|阅卷人|题号|题目|合分人|评卷人|答案|分数|班级|姓名|成绩|密封线内不答|得分|评卷|选项|座号|总分人|总分|选择题|座位号|批卷人|结分人|核分人|计分人|共\d+分|复评人|核分人|分析说明|综合探究|卷面分|辨析|简答|多选|学科王|第.部分|-|—|Ⅰ|Ⅱ|（|）|～|Â|[一二三四五六七八九十]|[1-9]\d*"
-        # Trace to *def is_blank_table
+        self.regex_blank = r"\.|\．|次|#|题|目|号|序|l|阅卷人|题号|题目|合分人|评卷人|答案|分数|班级|姓名|成绩|密封线内不答|得分|评卷|选项|座号|总分人|总分|选择题|座位号|批卷人|结分人|核分人|计分人|共\d+分|复评人|核分人|分析说明|综合探究|卷面分|辨析|简答|多选|学科王|第.部分|-|—|Ⅰ|Ⅱ|（|）|～|Â|[一二三四五六七八九十]|[1-9]\d*"
+        # Trace to *def is_blank_table 用来删除赘余定义空白表格
         
+        self.regex_answer = r'得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|-|—|Ⅰ|Ⅱ|（|）|]|[|[一二三四五六七八九十]' 
+        # 选择不删除数字 
+        
+        self.judge_answer_regex = r''
         
         # ** 可以把基本所有很长的Regex或者Keyword都放在__init__ **
         
@@ -151,18 +154,26 @@ class TableProcessor:
             other_chinese_chars3 = re.findall('[\u4e00-\u9fff]', text_without_keywords3)
             if not other_chinese_chars3:
                 return True
-        
-        text_clean = re.sub(self.regex_blank, "", text).strip() # trace back to innit/
+
+        text_clean = re.sub(self.regex_answer, "", text).strip() # trace back to innit/
         text_clean = re.sub(r'[\[\]]', '', text_clean).strip() # removes all []
-        text_clean = re.sub(r'[\uFF01-\uFF5E]','',text_clean).strip() # removes all full-width English character.
-                                                                      # 这个貌似还挺重要
+        # text_clean = re.sub(r'[\uFF01-\uFF5E]','',text_clean).strip() # removes all full-width English character. 
+        # 这个先不用，它会把 '.' 删掉
         
-        # Sick General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
-        if bool(re.search(r"^[a-fA-F]+$",text_clean)):
-            print(text_clean)
-            print('sick')
-            return "Sick"
+        # General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
         
+        if '．' in text_clean: # 注意全角的 dot
+            if re.match(r'[A-D]\．\d',text_clean) or re.match(r'[A-D]\.\d',text_clean): # 数字. A ，为选项table
+                return False
+            elif re.match(r'[A-D]\．[A-D]',text_clean) or re.match(r'[A-D]\．[A-D]', text_clean):
+                return False
+            elif not re.match(r'[A-D]',text_clean):
+                return False
+            else:
+                return True
+        elif bool(re.search(r"^(?=.*[a-zA-Z])([0-9])+$",text_clean)):
+            return True
+     
         return False
     
     def is_long_table(self, table):
@@ -232,14 +243,15 @@ class TableProcessor:
             if filename.endswith('.html'):
                 input_html = os.path.join(self.input_folder, filename)
                 self.extract_tables(input_html)
-                self.output_statistics()        
+                self.output_statistics()
+                break # 先只遍历一个文件        
 
 
 if __name__ == '__main__':
     
     # Input the folder path here.
-    input_folder = 'tables/testing'
-    output_folder = 'tables/output'
+    input_folder = 'exam type table'
+    output_folder = 'output'
     
     # 去一遍水印
     # marker = htmlmarker.HTMLProcessor(input_folder= input_folder, output_folder= output_folder)
@@ -248,4 +260,5 @@ if __name__ == '__main__':
     # 再分类表格
     processor = TableProcessor(input_folder, output_folder)
     processor.process()
+    
     
