@@ -2,7 +2,9 @@ import os
 from bs4 import BeautifulSoup
 import re
 from tqdm import tqdm
-import htmlmarker # 去水印
+from datetime import datetime
+import pytz
+# import htmlmarker # 去水印
 
 
 class TableProcessor:
@@ -13,12 +15,11 @@ class TableProcessor:
         self.output_blank_html = os.path.join(output_folder, 'output_for_blank_tables.html')
         self.output_normal_html = os.path.join(output_folder, 'output_for_normal_tables.html')
         self.output_long_html = os.path.join(output_folder, 'output_for_long_tables.html')
-        
         self.output_test_html = os.path.join(output_folder,'output_for_new_type.html')
         # 我个人做完一个类型的大致筛选会输出到这儿
         
-        
         self.counters = {'total': 0, 'answer': 0, 'blank': 0, 'normal': 0, 'long': 0}
+        
         self.regex_long_table = [
             '教学过程', '教学目标', '范文展示', '选择题', '学生活动', '设计意图', '学情分析', '教学重难点', '教师活动',
             '课题', '综合题', '教材分析', '教学环节', '授课时间', '教学器材', '学习目标', '教学辅助', '病文展示', '升格作文',
@@ -29,11 +30,13 @@ class TableProcessor:
             '考查要点', '精彩看点', '课标要求', '本节教学内容', '本节教学目标', '本节教学重难点', '本节内容教学方法', '讲授法', '本节内容课时安排',
             '信息类型', '主题信息', '条件信息', '过程信息', '隐藏信息', '教学设计理念', '文本解读', '活动形式与步骤', '活动层次', '学习效果评价',
             '授课教材', '授课题目', '主题情境', '内容分析', '教学反思', '教学重与难点', '真题展示', '题型特点', '考查要点', '试题来源'
-        ]    # Trace to is_long_table not used yet.
+        ]    # Trace to is_long_table not used yet. 还未投入使用
         
-        self.regex_blank = r"\.|次|#|题|目|号|序|l|阅卷人|题号|题目|合分人|评卷人|答案|分数|班级|姓名|成绩|密封线内不答|得分|评卷|选项|座号|总分人|总分|选择题|座位号|批卷人|结分人|核分人|计分人|共\d+分|复评人|核分人|分析说明|综合探究|卷面分|辨析|简答|多选|学科王|第.部分|-|—|Ⅰ|Ⅱ|（|）|～|Â|[一二三四五六七八九十]|[1-9]\d*"
-        # Trace to *def is_blank_table
+        self.regex_blank = r"能力测试|水平测试|[A-Z]组|综合分析题|考场座位号|填空|计算|实验|探究|选择|密封线内不答|综合探究|家长签字|学生签字|分析说明|卷面分|学科王|评卷人|批卷人|复核人|结分人|计分人|附加题|复评人|核分人|累分人|合分人|总分人|阅卷人|选择题|座位号|简答|多选|辨析|第.部分|共\d+分|化学|物理|生物|合计|姓名|班级|成绩|全卷|得分|评卷|选项|座号|地理|连线|选择|材料|部分|总分|分值|题号|题目|答案|分数|Ⅰ|Ⅱ|Ⅲ|—|、|:|～|Â|（|）|\.|\．|\*|,|#|[+-]|﹣|﹢|l|科|扣|卷|面|图|分|次|号|序|目|题|栏|初|核|人|复|-|第|学|非|或|[一二三四五六七八九十]|[0-9]\d*|~|～|[\u2460-\u2473]|新|课|标|第|一|网|来|源|学|科|\]|\[|\||"
+        # Trace to *def is_blank_table 用来删除赘余定义空白表格
         
+        self.regex_answer = r'[\u2191\u2193]|△|、|&super.?END&|[+-]|[><=＜＞＝]|→|：|[\u2460-\u2473]|&sub.?END&|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|﹣|﹢|\(|\)|—|Ⅰ|Ⅱ|\]|\[|[一二三四五六七八九十]|新|课|标|第|一|网|来|源|学|科|\||'
+        # 选择不删除数字 和 Dot
         
         # ** 可以把基本所有很长的Regex或者Keyword都放在__init__ **
         
@@ -42,18 +45,22 @@ class TableProcessor:
     def is_blank_table(self, table):
         parsed_table = str(table)
         soup_copy = BeautifulSoup(parsed_table, 'lxml') # create a copy, we want to return the full table.
-
+        
         if re.fullmatch(r'(<[^<>]*?>|\s)+', parsed_table):
             return True
         if "007.png" in parsed_table or "TABLE_PROTECT" in parsed_table: # 极端情况 ** Protected table不管
             return False
-        if len(soup_copy.find_all('tr')) > 3 or len(soup_copy.find_all('p')) > 100:
-            return False
+        
+        
+        #  感觉用不着了
+        #if len(soup_copy.find_all('tr')) >= 7 or len(soup_copy.find_all('p')) > 100:
+        #    print(1) # 过长的Table或者是p tag过多的table，不是空白表格
+        #    return False
         
         for p_tag in soup_copy.find_all('p'): # 另一种极端情况，p段背景颜色为蓝色
             if "background-color:#000080" in str(p_tag.get('style', '')):
                 return False
-    
+            
         for span_tag in soup_copy.find_all('span'):
             if "color:#ffffff" in str(span_tag.get('style', '')) and not ("background-color:#ffffff" in str(span_tag.get('style', '')) or "background-color:#000080" in str(span_tag.get('style', ''))): # 再考虑一下其他颜色的情况
                 span_tag.decompose()
@@ -70,7 +77,7 @@ class TableProcessor:
         text_clean = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text_clean).strip()
         
         text_clean = re.sub(self.regex_blank, "", text_clean).strip() # trace back to innit/
-        
+        print(text_clean)
         if text_clean == "" or re.search(r"条形码粘贴处|准考证", text_clean):
             if img_count <= 2:
                 return True
@@ -78,7 +85,7 @@ class TableProcessor:
         if bool(re.fullmatch(r'[wW]{0,3}', text_clean)):
             return True # 如果只剩下一个w，或者2个w，基本上是水印，可以认定为空白表 
                         # 这边以后优化好了水印module可以不用 MARK一下**
-        
+        print(text_clean)
         return False
     
     # 从html中提取表格
@@ -91,8 +98,10 @@ class TableProcessor:
         for table in tqdm(tables, desc=f"Processing Tables: {os.path.basename(input_html)}"):
             self.counters['total'] += 1
             
-            if table.find('img') or table.find('table'):
-                continue  # Skip tables with images or nested tables for now
+            
+            # 不跳过嵌套和图片表格，直接操作
+            #if table.find('img') or table.find('table'):
+            #    continue  # Skip tables with images or nested tables for now
             
             self.classify_and_save(table)
     
@@ -128,41 +137,56 @@ class TableProcessor:
         text = ''.join(table.stripped_strings)
         text = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text).strip()
         
-        
-        
         if bool(re.search('√', text)) and not re.findall('[\u4e00-\u9fff]', text) : # 特殊极端情况，带√的
             return True
         
-        
+       
         Ans_type1 = re.search('答案', text) is not None and re.search('题号', text) is not None
         if Ans_type1: # 第一种情况，只带答案和题号，并且没有其他中文字符
             text_without_keywords = text.replace('答案', '').replace('题号', '')
             other_chinese_chars = re.findall('[\u4e00-\u9fff]', text_without_keywords)
             if not other_chinese_chars:
                 return True
-        
-        Ans_type2 = bool(re.match(r'^(?=.*[A-Z])(?=.*[0-9])[A-Z0-9.]*$', text)) and not re.search('[\u4e00-\u9fff]', text)
-        if Ans_type2: # 第二种情况，有字母/数字，没有任何其他别的中文字符 （不太好，只是暂时思路）
-            return True
-        
+       
+        # Deleted type 2     
+            
         Ans_type3 = re.search('答案', text) is not None and re.search('题目', text) is not None
         if Ans_type3: # 第三种情况，答案 和 题目，没有其他中文字符 （其实类似这种很多，应该做个表放innit
             text_without_keywords3 = text.replace('答案', '').replace('题目', '')
             other_chinese_chars3 = re.findall('[\u4e00-\u9fff]', text_without_keywords3)
             if not other_chinese_chars3:
                 return True
-        
-        text_clean = re.sub(self.regex_blank, "", text).strip() # trace back to innit/
+
+        text_clean = re.sub(self.regex_answer, "", text).strip() # trace back to innit/
         text_clean = re.sub(r'[\[\]]', '', text_clean).strip() # removes all []
-        text_clean = re.sub(r'[\uFF01-\uFF5E]','',text_clean).strip() # removes all full-width English character.
-                                                                      # 这个貌似还挺重要
+        # text_clean = re.sub(r'[\uFF01-\uFF5E]','',text_clean).strip() # removes all full-width English character. 
+        # 这个先不用，它会把 '.' 删掉
         
-        # Sick General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
-        if bool(re.search(r"^[a-fA-F]+$",text_clean)):
-            print(text_clean)
-            print('sick')
-            return "Sick"
+        # General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
+        if re.search('[\u4e00-\u9fff]',text_clean):
+            return False
         
+        if '；' in text_clean:
+            return False
+        
+        
+        if '．' in text_clean: # 注意全角的 dot
+            if re.match(r'[A-D]\．\d',text_clean) or re.match(r'[A-D]\.\d',text_clean): # 数字. A ，为选项table
+                return False
+            elif re.match(r'[A-D]\．[A-Z]',text_clean) or re.match(r'[A-D]\．[A-D]', text_clean): # 字母. 字母 选项
+                return False
+            elif re.search(r'[A-D]',text_clean) is None:
+                return False # 没有ABCD
+            elif re.match(r'[A-Z]．[a-zA-Z0-9]+',text_clean):
+                return False # A．xy11B．xy12C．xy14D．xy21
+            elif re.search(r'[Mg|Li]',text_clean):
+                return False
+            else:
+                print("what's left answer table",text_clean)
+                return True
+        elif bool(re.search(r"^(?=.*[a-zA-Z])(?=.*\d).+$",text_clean)):
+            return True
+        print('final',text_clean)
         return False
     
     def is_long_table(self, table):
@@ -194,16 +218,9 @@ class TableProcessor:
             self.save_table(table, self.output_blank_html, 'blank')
         # 答案表格
         elif self.is_answer_table(table) is True:
-            if self.is_blank_table_2(table):
-                self.save_table(table, self.output_blank_html, 'blank')
-            else:
-                self.save_table(table, self.output_answer_html, 'answer')
-        # 长表格
-        elif self.is_answer_table(table) =='Sick': #TEST
-            self.save_table(table,self.output_test_html,'answer')
-            
+            self.save_table(table, self.output_answer_html, 'answer')
         elif self.is_long_table(table):
-            self.save_table(table, self.output_long_html, 'long')
+            self.save_table(table, self.output_long_html, 'long')            
         # 正常表格
         else:
             self.save_table(table, self.output_normal_html, 'normal')
@@ -224,6 +241,8 @@ class TableProcessor:
             for table_type, count in self.counters.items():
                 if table_type != 'total':
                     file.write(f"<p>{table_type.capitalize()} tables: {count}</p>")
+            time_now = datetime.now(pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M:%S')
+            file.write(f"<p>Ending time: {time_now}</p>")
             file.write("</body></html>")
     
     # Processor Function，用来遍历folder中的html文件并且pass html文件给extract table function
@@ -232,14 +251,15 @@ class TableProcessor:
             if filename.endswith('.html'):
                 input_html = os.path.join(self.input_folder, filename)
                 self.extract_tables(input_html)
-                self.output_statistics()        
-
+                self.output_statistics()
+                break
+                
 
 if __name__ == '__main__':
     
     # Input the folder path here.
-    input_folder = 'tables/testing'
-    output_folder = 'tables/output'
+    input_folder = 'exam type table'
+    output_folder = 'output'
     
     # 去一遍水印
     # marker = htmlmarker.HTMLProcessor(input_folder= input_folder, output_folder= output_folder)
@@ -248,4 +268,5 @@ if __name__ == '__main__':
     # 再分类表格
     processor = TableProcessor(input_folder, output_folder)
     processor.process()
+    
     
