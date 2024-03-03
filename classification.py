@@ -32,12 +32,14 @@ class TableProcessor:
             '授课教材', '授课题目', '主题情境', '内容分析', '教学反思', '教学重与难点', '真题展示', '题型特点', '考查要点', '试题来源'
         ]    # Trace to is_long_table not used yet. 还未投入使用
         
-        self.regex_blank = r"共\d{1,3}分|解题方法归纳总结|错题原因分析|阅卷签名|选项字母|能力测试|水平测试|[A-Z]组|综合分析题|考场座位号|填空|计算|实验|探究|选择|密封线内不答|综合探究|家长签字|学生签字|分析说明|卷面分|学科王|评卷人|批卷人|复核人|结分人|计分人|未分类|附加题|复评人|核分人|累分人|合分人|作图题|单选题|总分人||复查人|阅卷人|选择题|座位号|简答|多选|辨析|第.部分|共\d+分|化学|物理|生物|合计|姓名|班级|成绩|全卷|试题|得分|评卷|等级|选项|座号|地理|连线|选择|材料|部分|总分|分值|题号|题目|满分|答案|分数|综合|专题|Ⅰ|Ⅱ|Ⅲ|I|II|III|—|、|:|～|Â|（|）|\.|\．|\*|,|#|[+-]|﹣|﹢|l|科|扣|卷|面|图|分|次|号|序|目|题|栏|初|核|人|复|-|第|学|非|或|[一二三四五六七八九十]|[0-9]\d*|~|～|：|[\u2460-\u2473]|新|课|标|第|一|网|来|源|学|科|总|\]|\[|\||※|答|与|填|实"
-        # Trace to *def is_blank_table 用来删除赘余定义空白表格
         
-        self.regex_answer = r'[\u2191\u2193]|△|、|评卷人|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|—|Ⅰ|Ⅱ|\]|\[|[一二三四五六七八九十]|新|课|标|第|一|网|来|源|学|科|\||答'
+        # 全角数字 [\uFF10-\uFF19]+
+        # Roman Numerals [\u2160-\u216F]+
+        self.regex_blank = r"试卷成绩|口语成绩|平时成绩|单项填空|完形填空|阅读理解|短文填空|句型转换|汉译英|书面表达|卷面书写与整洁|在相应的等级上打“√”|正确选项|分析说明题|考号末两位|完成作业|参加活动|学习行为|学习态度|卷面书写|第\d{1,3}周|共\d{1,3}分|解题方法归纳总结|错题原因分析|阅卷签名|评价等级|选项字母|判断理由|能力测试|检测等级|口语交际|水平测试|[A-Z]组|综合分析题|考场座位号|填空|计算|实验|探究|选择|密封线内不答|综合探究|文综会考|单项选择|家长签字|学生姓名|学生签字|分析说明|出题教师|卷面分|学科王|评卷人|批卷人|复核人|每小题|结分人|计分人|评分人|未分类|附加题|复评人|核分人|累分人|合分人|作图题|单选题|总分人|座次号|复查人|阅卷人|选择题|问答题|座位号|正确率%|待达标|简答|多选|听力|笔试|辨析|第.部分|共\d+分|化学|物理|生物|合计|评语|班级|成绩|全卷|试题|得分|评卷|等级|选项|座号|序号|地理|正误|题次|学校|姓名|连线|选择|测试|评价|过程|内容|最佳|材料|书写|单选|学号|部分|日期|总分|分值|题号|题目|附加|满分|大题|答案|分数|扣分|综合|专题|字母|达标|卷面|周次|小记|评分|Ⅰ|Ⅱ|Ⅲ|I|II|III|—|、|:|～|Â|（|）|\.|\．|\*|,|，|#|[+-]|﹣|－|﹢|l|科|扣|卷|面|图|分|次|号|序|项|非|目|题|栏|初|核|人|复|-|第|学|非|或|[一二三四五六七八九十]|[0-9]\d*|~|～|：|[\u2460-\u2473]|[\uFF10-\uFF19]+|新|课|标|第|一|网|来|源|学|科|总|节|\]|\[|\||※|答|与|填|实|小|优|良|/|I|II|III|IV|V|VI|VII|VIII|IX|X|XI|XII|XIII|XIV|XV|XVI|XVII|XVIII|XIX|XX|[\u2160-\u216F]+|☆"
+        
+        self.regex_answer = r'正确选项|文综会考|答案字母|[\u2191\u2193]|△|、|大题|评卷人|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|—|Ⅰ|Ⅱ|\]|\[|[一二三四五六七八九十]|新|课|标|第|一|网|来|源|学|科|\||答|题|小'
         # 选择不删除数字 和 Dot
-        self.regex_notanswer = r'[\u2460-\u2473]|[><=＜＞＝]|[+-]|/|\（|\）|\(|\)|→|：|；|﹣|﹢|&sub.?END&|&super.?END&|／|Ω'
+        self.regex_notanswer = r'Example|[\u2460-\u2473]|[><=＜＞＝]|[+-]|\（|\）|\(|\)|→|：|；|﹣|﹢|&sub.?END&|&super.?END&|Ω'
         # ** 可以把基本所有很长的Regex或者Keyword都放在__init__ **
         
     # 空白表格 一筛
@@ -48,8 +50,8 @@ class TableProcessor:
         
         text = ''.join(table.stripped_strings)
         #print(text)
-        counts = {char: text.count(f'{char}') for char in 'ABCD'}	
-        if len(set(counts.values())) == 1 and next(iter(counts.values())) > 5:
+        counts = {char: text.count(f'[{char}]') for char in 'ABCD'}	
+        if len(set(counts.values())) == 1 and next(iter(counts.values())) >= 3:
             print('答题卡',text)
             return True
         # 1[A][B][C][D]6[A][B][C][D]，这边处理一些答题卡类的
@@ -83,8 +85,8 @@ class TableProcessor:
         text_clean = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text_clean).strip()
         
         text_clean = re.sub(self.regex_blank, "", text_clean).strip() # trace back to innit/
-
-        if text_clean == "" or re.search(r"考生须知|条形码粘贴处|准考证", text_clean):
+        
+        if text_clean == "" or re.search(r"考生须知|条形码粘贴处|准考证|密封线内不要", text_clean):
             if img_count <= 2:
                 return True
 
@@ -146,8 +148,8 @@ class TableProcessor:
         text = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text).strip()
         
         
-        if bool(re.search('√', text)) and not re.findall('[\u4e00-\u9fff]', text) : # 特殊极端情况，带√的
-            return True
+        #if bool(re.search('√', text)) and not re.findall('[\u4e00-\u9fff]', text) : # 特殊极端情况，带√的
+        #   return True
         
        
         # Ans_type1 = re.search('答案', text) is not None and re.search('题号', text) is not None
@@ -173,13 +175,22 @@ class TableProcessor:
         # 这个先不用，它会把 '.' 删掉
         
         # General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
+        
         if bool(re.search('[\u4e00-\u9fff]',text_clean)):
             return False
         
         if bool(re.search(self.regex_notanswer, text_clean)):
             return False
         
-
+        # new filteration, count nonABCD letters.
+        text_upper = text.upper()
+        count_nonABCD = sum(1 for char in text_upper if char.isalpha() and char not in "ABCD")
+        if count_nonABCD >= 10: # threshold 阈值
+            return False
+        
+        
+        text_clean = re.sub(r'[.]','．',text_clean)
+        
         if '．' in text_clean: # 注意全角的 dot
             if re.match(r'[A-D]\．\d',text_clean) or re.match(r'[A-D]\.\d',text_clean): # 数字. A ，为选项table
                 return False
@@ -197,6 +208,7 @@ class TableProcessor:
         
         elif bool(re.search(r"^(?=.*[a-dA-D])(?=.*\d{5,}).+$",text_clean)):
             return True
+        
         return False
     
     def is_long_table(self, table):
@@ -264,7 +276,7 @@ class TableProcessor:
                 input_html = os.path.join(self.input_folder, filename)
                 self.extract_tables(input_html)
                 self.output_statistics()
-                break # 先遍历一个文件，记得删掉
+               # break # 先遍历一个文件，记得删掉
                 
 
 if __name__ == '__main__':
