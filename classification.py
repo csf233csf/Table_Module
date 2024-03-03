@@ -11,11 +11,11 @@ class TableProcessor:
     def __init__(self, input_folder, output_folder):
         self.input_folder = input_folder
         self.output_folder = output_folder
-        self.output_answer_html = os.path.join(output_folder, 'output_for_answer_tables.html')
-        self.output_blank_html = os.path.join(output_folder, 'output_for_blank_tables.html')
-        self.output_normal_html = os.path.join(output_folder, 'output_for_normal_tables.html')
-        self.output_long_html = os.path.join(output_folder, 'output_for_long_tables.html')
-        self.output_test_html = os.path.join(output_folder,'output_for_new_type.html')
+        self.output_answer_html = os.path.join(output_folder, 'answer_tables')
+        self.output_blank_html = os.path.join(output_folder, 'blank_tables')
+        self.output_normal_html = os.path.join(output_folder, 'normal_tables')
+        self.output_long_html = os.path.join(output_folder, 'long_tables')
+        #self.output_test_html = os.path.join(output_folder,'output_for_new_type.html')
         # 我个人做完一个类型的大致筛选会输出到这儿
         
         self.counters = {'total': 0, 'answer': 0, 'blank': 0, 'normal': 0, 'long': 0}
@@ -42,8 +42,8 @@ class TableProcessor:
         
         self.regex_answer = r'正确答案|正确选项|文综会考|答案字母|[\u2191\u2193]|△|、|大题|阅卷人|评卷人|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|—|Ⅰ|Ⅱ|\]|\[|[一二三四五六七八九十]|新|课|标|第|一|网|来|源|学|科|\||答|题|小'
         # 选择不删除数字 和 Dot
-        self.regex_notanswer = r'Example|[\u2460-\u2473]|[><=＜＞＝]|[+-]|\（|\）|\(|\)|→|：|；|﹣|﹢|&sub\d+END&|&super\d+END&|Ω'
-        # ** 可以把基本所有很长的Regex或者Keyword都放在__init__ **
+        self.regex_notanswer = r'△|∠|Example|[\u2460-\u2473]|[><=＜＞＝]|[+-]|\（|\）|\(|\)|→|：|；|﹣|﹢|&sub\d+END&|&super\d+END&|Ω|\/'
+        # ** 可以把基本所有很长的Regex或者Keyword都放在__init__ **/
         
     # 空白表格 一筛
     # 通过一些关键字，style，html tag和regex去筛选空白表格
@@ -53,7 +53,8 @@ class TableProcessor:
         
         text = ''.join(table.stripped_strings)
         #print(text)
-        counts = {char: text.count(f'[{char}]') for char in 'ABCD'}	
+        text = re.sub(' ','',text)
+        counts = {char: text.count(f'[{char}]') for char in 'ABC'}	
         if len(set(counts.values())) == 1 and next(iter(counts.values())) >= 3:
             print('答题卡',text)
             return True
@@ -63,7 +64,7 @@ class TableProcessor:
         if re.search(self.regex_is_blank,text):
             print(text,"isblank")
             return True
-            
+        
         
         if re.fullmatch(r'(<[^<>]*?>|\s)+', parsed_table):
             return True
@@ -93,6 +94,10 @@ class TableProcessor:
         text_clean = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text_clean).strip()
         
         text_clean = re.sub(self.regex_blank, "", text_clean).strip() # trace back to innit/
+        print(text_clean)
+        if re.fullmatch(r'kBcOm',text_clean):
+            return True
+        
         
         if text_clean == "" or re.search(r"考生须知|条形码粘贴处|准考证|密封线内不要", text_clean):
             if img_count <= 2:
@@ -109,7 +114,7 @@ class TableProcessor:
         return False
     
     # 从html中提取表格
-    def extract_tables(self, input_html):
+    def extract_tables(self, input_html,filename):
         with open(input_html, 'r', encoding='utf-8') as file:
             soup = BeautifulSoup(file, 'html.parser')
 
@@ -125,7 +130,7 @@ class TableProcessor:
             self.counters['total'] += 1
             
             
-            self.classify_and_save(table)
+            self.classify_and_save(table,filename)
     
     # 空白表格二筛
     # 通过计算空白表格的数量占多少百分比，用于筛选 答案表格 之后进行二筛
@@ -188,6 +193,9 @@ class TableProcessor:
         
         # General Check, 做了一个大致的筛选，筛选到一个新的file里，再手动看，细化
         
+        
+        
+        
         if bool(re.search('[\u4e00-\u9fff]',text_clean)):
             return False
         
@@ -195,8 +203,10 @@ class TableProcessor:
             return False
         # new filteration, count nonABCD letters.
         text_upper = text.upper()
-        count_nonABCD = sum(1 for char in text_upper if char.isalpha() and char not in "ABCD")
+        
+        count_nonABCD = sum(1 for char in text_upper if bool(re.match(r'[A-Z]', char) and char not in "ABCD"))
         if count_nonABCD >= 6: # threshold 阈值
+            
             return False
         
         
@@ -244,20 +254,20 @@ class TableProcessor:
     
     # 跑流程 call functions
     # 优先级 空白表格 > 答案表格 > 长表格 
-    def classify_and_save(self, table): 
+    def classify_and_save(self, table, filename): 
                 
         # 空白表格             
         if self.is_blank_table(table):
-            self.save_table(table, self.output_blank_html, 'blank')
+            self.save_table(table, self.output_blank_html+filename+'.html' , 'blank')
         # 答案表格
         elif self.is_answer_table(table) is True:
-            self.save_table(table, self.output_answer_html, 'answer') 
+            self.save_table(table, self.output_answer_html+filename+'.html', 'answer') 
         #长表格    
         elif self.is_long_table(table):
-            self.save_table(table, self.output_long_html, 'long')            
+            self.save_table(table, self.output_long_html+filename+'.html', 'long')            
         # 正常表格
         else:
-            self.save_table(table, self.output_normal_html, 'normal')
+            self.save_table(table, self.output_normal_html+filename+'.html', 'normal')
             
     # 保存表格
     def save_table(self, table, output_path, table_type): 
@@ -266,8 +276,8 @@ class TableProcessor:
         self.counters[table_type] += 1
 
     # 输出统计文件 / KPI output
-    def output_statistics(self):
-        stats_path = os.path.join(self.output_folder, 'table_statistics.html')
+    def output_statistics(self,filename):
+        stats_path = os.path.join(self.output_folder, f'table_statistics{filename}.html')
         with open(stats_path, 'w', encoding='utf-8') as file:
             file.write("<html><head><title>Table Processing Statistics</title></head><body>")
             file.write("<h1>Table Processing Statistics</h1>")
@@ -277,16 +287,17 @@ class TableProcessor:
                     file.write(f"<p>{table_type.capitalize()} tables: {count}</p>")
             # 输出统计最后加上时间
             time_now = datetime.now(pytz.timezone('Asia/Shanghai')).strftime('%Y-%m-%d %H:%M:%S')
-            file.write(f"<p>Ending time: {time_now}</p>")
+            file.write(f"<p>Ending time: {time_now}, Filename: {filename}</p>")
             file.write("</body></html>")
     
     # Processor Function，用来遍历folder中的html文件并且pass html文件给extract table function
+    
     def process(self):
         for filename in tqdm(os.listdir(self.input_folder), desc="Processing HTML Files"):
             if filename.endswith('.html'):
                 input_html = os.path.join(self.input_folder, filename)
                 self.extract_tables(input_html)
-                self.output_statistics()
+                self.output_statistics(filename)
                # break # 先遍历一个文件，记得删掉
                 
 
