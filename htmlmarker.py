@@ -67,10 +67,10 @@ class HTMLMarker:
         # 如果找到匹配，对每个span元素的文本进行替换
                         for span in span_elements:
                             original_text = span.get_text()
-                            new_text = re.sub(regex, '', original_text, flags=re.IGNORECASE)
+                            new_text = re.sub(regex, '', original_text)
                             span.string = new_text
                             
-                            print(f"已清除水印: {combined_text}, replaced with {new_text}")
+                            print(f"已清除水印: {combined_text}, replaced with {span.string}")
 
         else:
             # 如果pass in了pattern key，则使用指定的regex
