@@ -5,47 +5,34 @@ import os
 class HTMLMarker:
     def __init__(self):
         self.regex_patterns = {
-    'default': r'w\s*w\s*w\..*',
-    'custom_1': r'\.c\s*o\s*m',
-    'custom_2': r'\s*新\s*课\s*标\s*第\s*一\s*网\s*',
-    'custom_3': r'w\s*w\.\s*.*\s*\.c\s*o\s*m',
-    'custom_4': r'\.c\s*o\s*',
-    'custom_5': r'\.c\s*o\s*m$',
-    'custom_6': r'x\s*k\s*b\s*1\s*.\s*c\s*o\s*m',
-    'custom_7': r'xHXBLANKkHXBLANKbHXBLANK1',
-    '8': r'\[来源:学。科。网Z。X。X。K\]',
-    '9': r'\[来源:学HXBLANK科HXBLANK网\]',
-    '10': r'xkb1.com',
-    '11': r'\[来源:学\|科\|网Z\|X\|X\|K',
-    '12': r'w\s*w\s*w\s*.x\s*k\s*b\s*1.c\s*o\s*m',
-    '13': r'\[来源:Z\*xx\*k.Com\]\[来源:学HXBLANK科HXBLANK网\]x\s*k\s*b\s*1\s*.\s*c\s*o\s*m\[来源:学#科#网Z#X#X#K\]',
-    '14': r'X\s*k\s*b\s*1\s*.\s*c\s*o\s*m',
-    '15': r'x\s*k\s*b\s*1\s*.\s*c',
-    '16': r'x.k.b.1',
-    '17': r'x\s*k\s*b\s*1\s*.\s*c\s*o\s*m',
-    '18': r'\[来源:Z,xx,k.Com\]',
-    '19': r'w\s*w\s*w\s*.x\s*k\s*b\s*1.c\s*o\s*m',
-    '20': r'xkb1.com',
-    '21': r'\[来源:学#科#网\]',
-    '22': r'x\s*kb\s*1',
-    '23': r'\[来源:学\+科\+网Z\+X\+X\+K\]',
-    '24': r'新HXBLANK课HXBLANK标第HXBLANK一HXBLANK网',
-    '25': r'\[来源:学&科&网Z&X&X&K\]\[来源来源:学*科*网Z*X*X*K\]',
-    '26' : r'\[来源:学&科&网Z&X&X&K\]',
-    '27' : r'xk\|b\|1',
-    '28' : r'\[来源:学+科+网\]',
-    '29' : r'\[来源',
-    '30' : r'\[来源:学#科#网Z#X#X#K\]',
-    '31' : r'\[来源:学|科|网\]',
-    '32' : r'\*课标\*第\*一\*网',
-    '33' : r'\[来源:学,科,网\]'
+    '1': r'\[来源:Z\*xx\*k.Com\]\[来源:学HXBLANK科HXBLANK网\]x\s*k\s*b\s*1\s*.\s*c\s*o\s*m\[来源:学#科#网Z#X#X#K\]',
+    '2': r'\[来源:学&科&网Z&X&X&K\]\[来源来源:学*科*网Z*X*X*K\]',
+    '3': r'w\s*w\s*w\s*.x\s*k\s*b\s*1.c\s*o\s*m',
+    '4': r'X\s*k\s*b\s*1\s*.\s*c\s*o\s*m',
+    '5': r'x\s*k\s*b\s*1\s*.\s*c\s*o\s*m',
+    '6': r'\[来源:学。科。网Z。X。X。K\]',
+    '7': r'\[来源:学HXBLANK科HXBLANK网\]',
+    '8': r'\[来源:学\|科\|网Z\|X\|X\|K',
+    '9': r'\[来源:Z,xx,k.Com\]',
+    '10': r'\[来源:学#科#网\]',
+    '11': r'\[来源:学\+科\+网Z\+X\+X\+K\]',
+    '12': r'新HXBLANK课HXBLANK标第HXBLANK一HXBLANK网',
+    '13': r'\[来源:学&科&网Z&X&X&K\]',
+    '14': r'\[来源:学+科+网\]',
+    '15': r'\[来源:学#科#网Z#X#X#K\]',
+    '16': r'\[来源:学|科|网\]',
+    '17': r'\[来源:学,科,网\]',
+    '18': r'\[来源:学科网ZXXK\]',
+    '19': r'x\s*k\s*b\s*1\s*.\s*c',
+    '20': r'x.k.b.1',
+    '21': r'x\s*kb\s*1',
+    '22': r'xkb1.com',
+    '23': r'\.c\s*o\s*m$',
+    '24': r'\.c\s*o\s*m',
+    '25': r'\.c\s*o\s*'
+                        }
+
     # 此处可以添加更多的regex patterns
-                                }
-
-
-
-
-
 
     def remove_watermarks(self, html_content, pattern_key = None, file_name = None):
 
@@ -80,9 +67,10 @@ class HTMLMarker:
         # 如果找到匹配，对每个span元素的文本进行替换
                         for span in span_elements:
                             original_text = span.get_text()
-                            new_text = re.sub(regex, '', original_text, flags=re.IGNORECASE)
+                            new_text = re.sub(regex, '', original_text)
                             span.string = new_text
-                            print(f"已清除水印: {combined_text}, replaced with {new_text}")
+                            
+                            print(f"已清除水印: {combined_text}, replaced with {span.string}")
 
         else:
             # 如果pass in了pattern key，则使用指定的regex
