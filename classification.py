@@ -62,7 +62,6 @@ class TableProcessor:
         
         
         if re.search(self.regex_is_blank,text):
-            print(text,"isblank")
             return True
         
         
@@ -94,7 +93,7 @@ class TableProcessor:
         text_clean = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text_clean).strip()
         
         text_clean = re.sub(self.regex_blank, "", text_clean).strip() # trace back to innit/
-        print(text_clean)
+   
         if re.fullmatch(r'kBcOm',text_clean):
             return True
         
@@ -120,7 +119,7 @@ class TableProcessor:
 
         tables = soup.find_all('table')
 
-        for table in tqdm(tables, desc=f"Processing Tables: {os.path.basename(input_html)}"):
+        for table in tqdm(tables, desc=f"Processing Tables"): #{os.path.basename(input_html)}
             
             
             # 跳过嵌套和图片表格，直接操作
