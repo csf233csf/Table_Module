@@ -1,0 +1,10 @@
+output/
+Table Test Runs/
+exam type table/
+gpttrials/
+ppt type table/
+output/
+*.html
+*.txt
+*.zip
+__pycache__/
