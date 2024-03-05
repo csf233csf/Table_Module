@@ -1,6 +1,7 @@
 import re
 from bs4 import BeautifulSoup, NavigableString
 
+
 class AnswerTableProcessor:
     def __init__(self, html_file_path, regex_pattern):
         self.html_file_path = html_file_path
@@ -54,8 +55,9 @@ class AnswerTableProcessor:
         tables = self.extract_tables()
         for table in tables:
             formatted_string = self.process_table(table)
-            self.processed_tables.append(formatted_string)  # Save processed text
-        
+            self.processed_tables.append(
+                formatted_string)  # Save processed text
+
         # Now, do all the editing at the last step
         for i, table in enumerate(tables):
             answer_paragraph = self.soup.new_tag("p")
@@ -66,6 +68,7 @@ class AnswerTableProcessor:
         new_file_path = self.html_file_path.replace('.html', '_modified.html')
         with open(new_file_path, 'w', encoding='utf-8') as file:
             file.write(str(self.soup))
+
 
 # Usage
 html_file_path = 'gpttrials/answer_tables初中英语.html.html'

@@ -8,3 +8,8 @@ output/
 *.txt
 *.zip
 __pycache__/
+func_table.py
+testing.py
+debuga.py
+.gitignore.txt
+.vscode/
