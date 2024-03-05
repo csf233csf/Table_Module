@@ -4,4 +4,7 @@ exam type table/
 gpttrials/
 ppt type table/
 output/
-_pycache_/
+*.html
+*.txt
+*.zip
+__pycache__/
