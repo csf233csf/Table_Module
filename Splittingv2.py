@@ -1,12 +1,12 @@
 import re
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 
-class TableSplitter:
+class AnswerTableProcessor:
     def __init__(self, html_file_path, regex_pattern):
         self.html_file_path = html_file_path
         self.regex_pattern = regex_pattern
         self.soup = None
-        self.counters = {"original": 0, "processed": 0}
+        self.processed_tables = []  # To store processed text for all tables
 
     def load_html(self):
         with open(self.html_file_path, 'r', encoding='utf-8') as file:
@@ -19,16 +19,13 @@ class TableSplitter:
     def extract_tables(self):
         return self.soup.find_all('table')
 
-    def split_answer_table(self, table):
-        # Check for the presence of a dot or full-width period in the table
+    def process_table(self, table):
+        # New code snippet to check for period and preprocess the table text
         if len(re.findall(r'[.．]', table.get_text())) >= 4 and re.search(r'[\u4e00-\u9fff]', table.get_text()) is None:
-            # Tables with dot/periods
             text = ''.join(table.stripped_strings)
             modded_text = re.sub(r'([A-Z])', r'\1 ', text).rstrip()
-            if re.
             return modded_text
         else:
-            # 这边要很注意,因为这种方法检查的是表格的结构/所以不能随便改动Table. 包括使用str(table)
             formatted_string = ""
             question_nums = []
             answer_choices = []
@@ -53,27 +50,29 @@ class TableSplitter:
 
             return formatted_string
 
-    def process_and_save_tables(self, output_path):
+    def insert_answers_into_document(self):
         tables = self.extract_tables()
         for table in tables:
-            self.save_table(table, output_path, "original")
-            processed_text = self.split_answer_table(table)
-            with open(output_path, 'a', encoding='utf-8') as f:
-                f.write(f"<p>{processed_text}</p>\n")
-            self.counters["processed"] += 1
+            formatted_string = self.process_table(table)
+            self.processed_tables.append(formatted_string)  # Save processed text
+        
+        # Now, do all the editing at the last step
+        for i, table in enumerate(tables):
+            answer_paragraph = self.soup.new_tag("p")
+            answer_paragraph.append(NavigableString(self.processed_tables[i]))
+            table.insert_after(answer_paragraph)
 
-    def save_table(self, table, output_path, table_type): 
-        with open(output_path, 'a', encoding='utf-8') as f:
-            f.write(f"<p>\n</p>\n{str(table)}\n")
-        self.counters[table_type] += 1
+    def save_modified_html(self):
+        new_file_path = self.html_file_path.replace('.html', '_modified.html')
+        with open(new_file_path, 'w', encoding='utf-8') as file:
+            file.write(str(self.soup))
 
-# Usage example
-html_file_path = 'gpttrials/answer_tables初中化学.html.html'
+# Usage
+html_file_path = 'gpttrials/answer_tables初中英语.html.html'
 regex_answer = r'[\u4e00-\u9fff]|:##Z#X#X#K.|[\u2191\u2193]|△|、|大题|阅卷人|评卷人|得分|题次|选项|序号|题号|题目|选择题|答案|分数|成绩|—|Ⅰ|Ⅱ|\]|\[|[一二三四五六七八九十]|新|课|标|第|一|网|来|源|学|科|\||答|题|小|'
 
-output_path = 'output_path.html'  # Specify the output file path
 
-
-processor = TableSplitter(html_file_path, regex_answer)
+processor = AnswerTableProcessor(html_file_path, regex_answer)
 processor.load_html()
-processor.process_and_save_tables(output_path)
+processor.insert_answers_into_document()
+processor.save_modified_html()
