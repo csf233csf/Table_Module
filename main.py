@@ -1,25 +1,23 @@
 from classification import TableProcessor
 from tqdm import tqdm
-from bs4 import BeautifulSoup
-import re
 import os
 import glob
 
 
-input_folder = 'exam type table/ALL'
-output_folder = 'output'
+input_folder = 'Table Data'
+output_folder = '表格分类3-6 run1/'
 
 foldertest = 'Table Test Runs'
 
-classify = TableProcessor(input_folder, output_folder)
-
+TableProcessor = TableProcessor()
 
 def Run_One_Folder():
     for filename in tqdm(os.listdir(input_folder), desc=f"Processing HTML File"):
         if filename.endswith('.html'):
             input_html = os.path.join(input_folder, filename)
-            classify.extract_tables(input_html, filename)
-            classify.output_statistics(filename)
+            TableProcessor.extract_tables(input_html,output_folder, filename)
+            TableProcessor.output_statistics(output_folder, filename)
+            TableProcessor.output_debug(output_folder,filename)
 
-
+# 开始跑路径下所有的文件
 Run_One_Folder()
