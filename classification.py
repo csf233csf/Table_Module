@@ -4,8 +4,6 @@ import re
 from tqdm import tqdm
 from datetime import datetime
 import pytz
-# import htmlmarker # 去水印
-
 
 class TableProcessor:
     def __init__(self):
@@ -116,7 +114,7 @@ class TableProcessor:
 
         count_nonABCD = sum(1 for char in text_upper if bool(
             re.match(r'[A-Z]', char) and char not in "ABCD"))
-        if count_nonABCD >= 6:  # threshold 阈值
+        if count_nonABCD >= 6: 
 
             return False
 
