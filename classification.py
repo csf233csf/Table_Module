@@ -71,7 +71,7 @@ class TableProcessor:
 
     def extract_tables(self, input_html, output_html, filename):
         with open(input_html, 'r', encoding='utf-8') as file:
-            soup = BeautifulSoup(file, 'html.parser')
+            soup = BeautifulSoup(file, 'lxml')
         tables = soup.find_all('table')
         for table in tqdm(tables, desc=f"Processing Tables: {filename}"):
             if table.find('img') or table.find('table'):
@@ -154,29 +154,20 @@ class TableProcessor:
 
     def is_long_table(self, table):
 
-        rows = table.find_all('tr')
         is_long = False
         total_text_length = 0
-
-        for idx, row in enumerate(rows):
-            cells = row.find_all(['th', 'td'])
-            num_p_in_cells = [len(cell.find_all('p')) for cell in cells]
-
-            if any(num_p >= 10 or (num_p >= 5 and "quest_num" in str(cell)) for num_p, cell in zip(num_p_in_cells, cells)):
-                is_long = True
-            if len(cells) == 1 and cells[0].get_text(strip=True) and idx != 0:
-                is_long = True
-
-            total_text_length += sum(len(cell.get_text(strip=True))
-                                     for cell in cells)
+        text = ''.join(table.stripped_strings)
+        pattern = re.compile(r'[^\u4e00-\u9fa5]') # Non Chinese characters
+        cleaned_text = re.sub(pattern, '', text)
+        total_text_length = len(cleaned_text)
 
         '''len(rows) < 10 or'''
-        if total_text_length > 2500 and len(rows) < 5:
-            is_long = True
+        if total_text_length > 1500:
+            is_long = True  # Long table
 
-        teaching_keywords = re.compile(self.regex_long_table)
-        if teaching_keywords.search(table.get_text()):
-            is_long = True
+        #teaching_keywords = re.compile(self.regex_long_table)
+        #if teaching_keywords.search(table.get_text()):
+        #    is_long = True  # Teaching keywords found
 
         return is_long
 
@@ -188,8 +179,8 @@ class TableProcessor:
             self.save_table(table, f'{output}answer_{filename}', 'answer')
         elif self.is_long_table(table):
             self.save_table(table, f'{output}long_{filename}', 'long')
-        else:
-            self.save_table(table, f'{output}normal_{filename}', 'normal')
+        #else:
+        #    self.save_table(table, f'{output}normal_{filename}', 'normal')
 
     def save_table(self, table, output_path, table_type):
         with open(output_path, 'a', encoding='utf-8') as f:
@@ -246,7 +237,7 @@ class SplitAnswerTable:
 
     def load_html(self):
         with open(self.html_file_path, 'r', encoding='utf-8') as file:
-            self.soup = BeautifulSoup(file, 'html.parser')
+            self.soup = BeautifulSoup(file, 'lxml')
 
     @staticmethod
     def clean_text(text, regex_pattern):
