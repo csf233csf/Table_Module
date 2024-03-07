@@ -8,3 +8,14 @@ output/
 *.txt
 *.zip
 __pycache__/
+func_table.py
+testing.py
+debuga.py
+.gitignore.txt
+.vscode/
+表格分类3-6 run1/
+Table Data/
+longclassfication.py
+splitting.py
+Splittingv2.py
+testing.py

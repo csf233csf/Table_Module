@@ -1,36 +1,35 @@
-from classification import TableProcessor
+from classification import TableProcessor # 导入TableProcessor
 from tqdm import tqdm
-from bs4 import BeautifulSoup
-import re
 import os
 import glob
 
 
-input_folder = 'exam type table/ALL'
-output_folder = 'output'
+input_folder = 'Table Data'
+output_folder = '表格分类3-6 run1/'
 
-foldertest = 'Table Test Runs'
-# Passing the classes
-classify = TableProcessor(input_folder,output_folder)
+TableProcessor = TableProcessor()
 
 def Run_One_Folder():
     for filename in tqdm(os.listdir(input_folder), desc=f"Processing HTML File"):
         if filename.endswith('.html'):
             input_html = os.path.join(input_folder, filename)
-            classify.extract_tables(input_html,filename)
-            classify.output_statistics(filename)
-'''
-def run_multi_folder(input_folder):
-    for dirpath, dirnames, filenames in tqdm(os.walk(input_folder), desc="Walking through folders"):
-        for filename in filenames:
-            if filename.endswith('.docx.out.aspose_res.html'):
-                input_html = os.path.join(dirpath, filename)
-                print(dirpath)
-                output_folder = dirpath
-                # 假设 classify.extract_tables 和 classify.output_statistics 是你要执行的操作
-                classify.extract_tables(input_html, filename)
-                classify.output_statistics(filename)
-run_multi_folder(foldertest) # Processes
-'''
+            TableProcessor.extract_tables(input_html, output_folder, filename)
+            TableProcessor.output_statistics(output_folder, filename)
+            TableProcessor.output_debug(output_folder, filename)
 
 Run_One_Folder()
+
+'''
+extract_tables(html_file_path, output_folder, filename)
+参数: html_file_path: 字符串，代表HTML文件的路径。
+     output_folder: 字符串，代表输出文件夹的路径。
+     filename: 字符串，代表HTML文件的文件名。
+
+output_statistics(output_folder, filename)
+参数: output_folder: 字符串，代表输出文件夹的路径。
+     filename: 字符串，代表HTML文件的文件名。
+
+output_debug(output_folder, filename)
+参数: output_folder: 字符串，代表输出文件夹的路径。
+     filename: 字符串，代表HTML文件的文件名。
+'''
