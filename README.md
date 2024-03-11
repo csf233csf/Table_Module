@@ -1,11 +1,10 @@
-Classifcation.py - 负责存放分类Function和Regex Keywords
+3/11：
+rewrote everything to **tablemodule.py**
 
-Splitting.py - 负责存放拆分Function
+Rewrote the pipeline, cleaner code and better readability.
 
-Main.py - 主文件，Doing OS walks
+Rewrote LongTable Splitting, there are now 2 types of long table splitting.
 
-3/4 - 完成了答案表格拆分的部分编写, 优化了一些Regex的逻辑, bug修复.
+Now has better I/O processing, twice faster than before.
 
-3/5 - 进一步迭代了空白表格和答案表格的一些chronic cases，bug修复。写了long table splitter的基础拆分逻辑
-
-Added LongClassification.py - 负责长表格的分类和拆分
+Now only outputs one statistic file, that shows all files that it's ran.
