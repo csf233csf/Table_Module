@@ -9,12 +9,12 @@ import pytz
 class TableProcessor:
     def __init__(self):
 
-        self.ansfunc_data = []
-        self.blankfunc_2_data = []
-        self.blank_anscard_data = []
+        self.ansfunc_data = []  # 用于存储未分类的数据
+        self.blankfunc_2_data = []  # 用于存储空白表格的数据
+        self.blank_anscard_data = [] # 用于存储答题卡的数据
 
         self.counters = {'total': 0, 'answer': 0,
-                         'blank': 0, 'normal': 0, 'long': 0}
+                         'blank': 0, 'normal': 0, 'long': 0} # 表格分类的计数
 
         # 全角数字 [\uFF10-\uFF19]+
         # Roman Numerals [\u2160-\u216F]+
@@ -36,37 +36,37 @@ class TableProcessor:
         text = re.sub(' ', '', text)
         counts = {char: text.count(f'[{char}]') for char in 'ABC'}
         if len(set(counts.values())) == 1 and next(iter(counts.values())) >= 3:
-            self.blank_anscard_data.append(text)
-            return True
+            self.blank_anscard_data.append(text) 
+            return True # 答题卡
         if re.search(self.regex_is_blank, text):
             return True
         if re.fullmatch(r'(<[^<>]*?>|\s)+', parsed_table):
-            return True
+            return True # 空白表格，Full Match空白文字
         if "007.png" in parsed_table or "TABLE_PROTECT" in parsed_table:
-            return False
+            return False # 保护表格
         for p_tag in soup_copy.find_all('p'):
             if "background-color:#000080" in str(p_tag.get('style', '')):
-                return False
+                return False # 保护表格2
         for span_tag in soup_copy.find_all('span'):
             if "color:#ffffff" in str(span_tag.get('style', '')) and not ("background-color:#ffffff" in str(span_tag.get('style', '')) or "background-color:#000080" in str(span_tag.get('style', ''))):
-                span_tag.decompose()
+                span_tag.decompose() # 拆解span标签
         for img_tag in soup_copy.find_all("img"):
             if 'height="3"' in str(img_tag) or 'width="2"' in str(img_tag):
-                img_tag.decompose()
-        cleaned_html = str(soup_copy)
-        img_count = cleaned_html.count("<img")
+                img_tag.decompose() # 拆解img标签
+        cleaned_html = str(soup_copy) 
+        img_count = cleaned_html.count("<img") # 计算img标签数量
         text_clean = "".join(
-            re.split(r"<[^>]+>", cleaned_html)).replace(" ", "").strip()
+            re.split(r"<[^>]+>", cleaned_html)).replace(" ", "").strip() # 清洗html标签
         text_clean = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+",
-                            "", text_clean).strip()
+                            "", text_clean).strip() # 清洗文本，去除空格entity html
         text_clean = re.sub(self.regex_blank, "", text_clean).strip()
         if text_clean == "" or re.search(r"考生须知|条形码粘贴处|准考证|密封线内不", text_clean):
-            if img_count <= 2:
-                return True
+            if img_count <= 2: 
+                return True # 空白表格，无文本
         if bool(re.fullmatch(r'[wW]{0,3}', text_clean)):
-            return True
+            return True # 用于应对一些顽固水印
         if bool(re.fullmatch(r'&ampsuperEND&amp|&ampsubEND&amp|&sub\d+END&|&super\d+END&', text_clean)):
-            return True
+            return True # 空白表格，Full Match一些特殊情况
         return False
 
     def extract_tables(self, input_html, output_html, filename):
@@ -77,22 +77,22 @@ class TableProcessor:
             if table.find('img') or table.find('table'):
                 continue
             self.counters['total'] += 1
-            self.classify_and_save(table, output_html, filename)
+            self.classify_and_save(table, output_html, filename) # 分类表格函数
 
     def is_blank_table_2(self, table):
         total_cells = 0
         blank_cells = 0
-        text = ''.join(table.stripped_strings)
-        text = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text).strip()
+        text = ''.join(table.stripped_strings) # 获取表格文本
+        text = re.sub(r"(\s|&nbsp;|&#160;|&#xa0;)+", "", text).strip() # 清洗文本
         for cell in table.find_all(['td', 'th']):
-            total_cells += 1
+            total_cells += 1 # 计算单元格数量
             cell_text = cell.get_text(strip=True)
             if not cell_text or cell_text.isspace() and 'width' in cell.get('style', ''):
                 blank_cells += 1
         if total_cells > 0:
             blank_percentage = (blank_cells / total_cells) * 100
             if blank_percentage >= 40:
-                self.blankfunc_2_data.append(text)
+                self.blankfunc_2_data.append(text) # 储存一些可能被误伤的不完整答案表格
                 return True
         return False
 
@@ -106,23 +106,23 @@ class TableProcessor:
             r'[\[\]]', '', text_clean).strip()
 
         if bool(re.search('[\u4e00-\u9fff]', text_clean)):
-            return False
+            return False # 用于排除掉还有别的中文字符的表格 **
 
         if bool(re.search(self.regex_notanswer, text_clean)):
-            return False
+            return False # 用于排除一些特殊情况
 
         text_upper = text.upper()
 
         count_nonABCD = sum(1 for char in text_upper if bool(
             re.match(r'[A-Z]', char) and char not in "ABCD"))
         if count_nonABCD >= 6:
-            return False
+            return False # 不应该有太多的非ABCD字符
 
-        text_clean = re.sub(r'[.]', '．', text_clean)
+        text_clean = re.sub(r'[.]', '．', text_clean) # 替换全角句号
 
-        if '．' in text_clean:
+        if '．' in text_clean: # 如果有全角的句号
             if re.match(r'[A-D]\．\d', text_clean) or re.match(r'[A-D]\.\d', text_clean):
-                return False
+                return False 
             elif re.match(r'[A-D]\．[A-Z]', text_clean) or re.match(r'[A-D]\．[A-D]', text_clean):
                 return False
             elif re.search(r'[A-D]', text_clean) is None:
@@ -142,13 +142,13 @@ class TableProcessor:
             elif re.search(r'cm',text_clean):
                 return False
             else:
-                self.ansfunc_data.append(text_clean)
+                self.ansfunc_data.append(text_clean) # 未分类的数据
                 return True
 
         else:
-            text_clean = re.sub(r'、','',text_clean)
+            text_clean = re.sub(r'、','',text_clean) # 替换中文顿号
             if bool(re.search(r"^(?=.*[a-dA-D]{4,})(?=.*\d{4,}).+$", text_clean)):
-                return True
+                return True # 有ABCD和数字，认定为是答案表格
 
         return False
 
@@ -157,13 +157,24 @@ class TableProcessor:
         is_long = False
         total_text_length = 0
         text = ''.join(table.stripped_strings)
-        pattern = re.compile(r'[^\u4e00-\u9fa5]') # Non Chinese characters
+        pattern = re.compile(r'[^\u4e00-\u9fa5]') # 匹配非中文字符
+        rows = table.find_all('tr')
+        num_p = 0
+
+        for idx, row in enumerate(rows):
+            cells = row.find_all(['th', 'td'])
+            for cell in cells: 
+                num_p = len(cell.find_all('p'))
+                if num_p > 10: # 如果p标签数量大于10
+                    is_long = True
+                    break
+        
         cleaned_text = re.sub(pattern, '', text)
         total_text_length = len(cleaned_text)
 
         '''len(rows) < 10 or'''
         if total_text_length > 1500:
-            is_long = True  # Long table
+            is_long = True  # 如果总文本长度大于1500, 认定为长表格
 
         #teaching_keywords = re.compile(self.regex_long_table)
         #if teaching_keywords.search(table.get_text()):
@@ -181,7 +192,7 @@ class TableProcessor:
             self.save_table(table, f'{output}long_{filename}', 'long')
         #else:
         #    self.save_table(table, f'{output}normal_{filename}', 'normal')
-
+        
     def save_table(self, table, output_path, table_type):
         with open(output_path, 'a', encoding='utf-8') as f:
             f.write(f"<p>\n</p>\n{str(table)}\n")
@@ -239,9 +250,9 @@ class SplitAnswerTable:
         with open(self.html_file_path, 'r', encoding='utf-8') as file:
             self.soup = BeautifulSoup(file, 'lxml')
 
-    @staticmethod
+    @staticmethod # 静态方法
     def clean_text(text, regex_pattern):
-        return re.sub(regex_pattern, '', text).strip()
+        return re.sub(regex_pattern, '', text).strip() # 清洗文本
 
     def extract_tables(self):
         return self.soup.find_all('table')
