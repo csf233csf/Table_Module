@@ -195,7 +195,7 @@ class TableProcessor:
             self.save_table(table, f'{output}long_{filename}', 'long')
         #else:
         #    self.save_table(table, f'{output}normal_{filename}', 'normal')
-        
+    
     def save_table(self, table, output_path, table_type):
         with open(output_path, 'a', encoding='utf-8') as f:
             f.write(f"<p>\n</p>\n{str(table)}\n")
@@ -313,8 +313,7 @@ class SplitLongTable:
 
         pass
 
-    # 这边的function是用于处理长表格的数据的，如果拆不了就会跳过。
-    def process_tables_and_generate_html(file_path):
+    def process_tables_and_generate_html(file_path, output):
         
         with open(file_path, 'r', encoding='utf-8') as file:
             html_content = file.read()
@@ -361,6 +360,10 @@ class SplitLongTable:
                                 output_html_content += f"{header}: {cell.get_text(strip=True)}<br><br>"
                     output_html_content += "<br><br>"
             except IndexError:
+                print("IndexError occurred, skipping table")
+                continue
+            except Exception as e:
+                print(f"An error occurred: {e}")
                 continue
         
         output_html_content += "</body></html>"
@@ -368,4 +371,5 @@ class SplitLongTable:
         new_file_path = file_path.replace('.html', 'processed.html')
         with open(new_file_path, 'w', encoding='utf-8') as file:
             file.write(output_html_content)
+
         return new_file_path

@@ -4,6 +4,67 @@ import re
 from tqdm import tqdm
 from datetime import datetime
 import pytz
+"""
+Class: TableModule
+
+函数list:
+                                            表格分类
+================================================================================================
+- is_blank_table(self, table: BeautifulSoup object)
+    判断表格是否为空白。
+    输出: bool (如果表格为空白则为True，否则为False)
+
+- is_blank_table_2(self, table: BeautifulSoup object)
+    另一种判断表格是否为空白的方法，**会有误伤**
+    输出: bool (如果表格为空白则为True，否则为False)
+
+- is_answer_table(self, table: BeautifulSoup object)
+    判断表格是否是答案表格
+    输出: bool (如果表格包含答案则为True，否则为False)
+
+- is_long_table(self, table: BeautifulSoup object)
+    判断表格是否为长表格。
+    输出: bool (如果表格为长表格则为True，否则为False)
+
+- classify_table(self, table: BeautifulSoup object)
+    根据预定义的标准对表格进行分类，并更新计数器。
+    输出: None
+                                            表格拆分
+================================================================================================
+- clean_text(text: str, regex_pattern: Pattern)
+    使用指定的正则表达式模式清洗提供的文本。
+    输出: str (清洗后的文本)
+    注意: 静态方法
+
+- extract_tables(self)
+    从加载的HTML文档中提取所有表格。
+    输出: BeautifulSoup对象的列表 (表格)
+
+- split_answer_table(self, table: BeautifulSoup object)
+    将答案表格拆分，目前有两种拆分形式
+    输出: str (格式化的答案字符串)
+
+- insert_answers_into_document(self, filename: str)
+    将处理后的答案插入到文档中。
+    输出: None
+
+- split_long_tables(self)
+    拆分长表格，有两种拆分形式
+                                            文件处理
+================================================================================================
+- output_statistics(self, output_folder: str, filename: str)
+    将处理统计信息输出到HTML文件中。
+    输出: None
+
+- output_debug(self, output_folder: str, filename: str)
+    将调试信息输出到文本文件中。
+    输出: None
+
+- load_html(self, input_html: str)
+    从文件中加载HTML内容到BeautifulSoup对象中。
+    输出: None
+
+"""
 
 
 class TableModule:
@@ -332,8 +393,7 @@ class TableModule:
             file.write(
                 f"<html><head><title>Table Processing Statistics</title></head><body>")
             file.write("<h1>Table Processing Statistics</h1>")
-            file.write(f"<p>Total tables processed: {
-                       self.counters['total']}</p>")
+            file.write(f"<p>Total tables processed: {self.counters['total']}</p>")
             for table_type, count in self.counters.items():
                 if table_type != 'total':
                     file.write(
@@ -343,7 +403,7 @@ class TableModule:
             file.write(f"<p>Ending time: {time_now}, Filename: {filename}</p>")
             file.write("</body></html>")
 
-    def output_debug(self, output_folder):
+    def output_debug(self, output_folder, filename):
         if len(self.ansfunc_data) != 0 or len(self.blankfunc_2_data) != 0 or len(self.blank_anscard_data) != 0:
 
             debug_path = os.path.join(
@@ -365,13 +425,13 @@ class TableModule:
         with open(input_html, 'r', encoding='utf-8') as file:
             self.soup = BeautifulSoup(file, 'lxml')
 
-    def save_output(self, output, filename): 
+    def save_output(self, output, filename):
         for type, soup in self.soups.items():
             with open(os.path.join(output, f'{type}_table{filename}'), 'w', encoding='utf-8') as file:
                 file.write(str(soup))
 
     def process_tables(self, input, output, filename, split_answer_tables=True, split_long_tables=True, output_stats=True, output_debug=True):
-        self.load_html(input) # Load the HTML file
+        self.load_html(input)  # Load the HTML file
         tables = self.extract_tables()
         total_tables = len(tables)
         with tqdm(total=total_tables, desc=f"Processing tables in {filename}") as pbar:
@@ -385,15 +445,16 @@ class TableModule:
         if output_stats:
             self.output_statistics(output, filename)
         if output_debug:
-            self.output_debug(output)
+            self.output_debug(output,filename)
         self.save_output(output, filename)
-        self.reset() # Reset the processor for the next file
+        self.reset()  # Reset the processor for the next file
+
 
 if __name__ == '__main__':
 
     processor = TableModule()
-    input_folder = 'Table Data'
-    output_folder = '表格分类3-11 run2/'
+    input_folder = r'D:\Work Files\讲义_zip\初中地理'
+    output_folder = r'D:\Work Files\Table Module\表格stats319\初中地理'
     for filename in tqdm(os.listdir(input_folder), desc=f"Processing HTML Files in folder {input_folder}"):
         if filename.endswith('.html'):
             input_html = os.path.join(input_folder, filename)
