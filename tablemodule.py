@@ -69,8 +69,24 @@ Class: TableModule
 
 class TableModule:
     def __init__(self):
-        self.reset()
+        self.ansfunc_data = []  # 用于存储未分类的数据
+        self.blankfunc_2_data = []  # 用于存储空白表格的数据
+        self.blank_anscard_data = []  # 用于存储答题卡的数据
 
+        self.soup = None
+        self.processed_ans_tables = []
+
+        self.counters = {'total': 0, 'answer': 0,
+                         'blank': 0, 'normal': 0, 'long': 0}  # 用于统计表格数量
+
+        self.regex_patterns = self._compile_regex_patterns()  # 编译正则表达式
+
+        self.soups = {
+            'blank': BeautifulSoup('', 'lxml'),
+            'answer': BeautifulSoup('', 'lxml'),
+            'long': BeautifulSoup('', 'lxml'),
+            'normal': BeautifulSoup('', 'lxml'),
+        }  # 用于存储不同类型的表格
     def reset(self):
         self.ansfunc_data = []  # 用于存储未分类的数据
         self.blankfunc_2_data = []  # 用于存储空白表格的数据
@@ -85,10 +101,10 @@ class TableModule:
         self.regex_patterns = self._compile_regex_patterns()  # 编译正则表达式
 
         self.soups = {
-            'blank': BeautifulSoup('<div></div>', 'lxml'),
-            'answer': BeautifulSoup('<div></div>', 'lxml'),
-            'long': BeautifulSoup('<div></div>', 'lxml'),
-            'normal': BeautifulSoup('<div></div>', 'lxml'),
+            'blank': BeautifulSoup('', 'lxml'),
+            'answer': BeautifulSoup('', 'lxml'),
+            'long': BeautifulSoup('', 'lxml'),
+            'normal': BeautifulSoup('', 'lxml'),
         }  # 用于存储不同类型的表格
 
     def _compile_regex_patterns(self):
@@ -277,7 +293,7 @@ class TableModule:
         self.counters['total'] += 1
 
         if type in self.soups:
-            self.soups[type].div.append(table)
+            self.soups[type].append(table)
 
     @staticmethod  # Static method for splitting answer table
     def clean_text(text, regex_pattern):
@@ -430,7 +446,13 @@ class TableModule:
             with open(os.path.join(output, f'{type}_table{filename}'), 'w', encoding='utf-8') as file:
                 file.write(str(soup))
 
-    def process_tables(self, input, output, filename, split_answer_tables=True, split_long_tables=True, output_stats=True, output_debug=True):
+    def save_output2one(self, output):
+        for type, soup in self.soups.items():
+            with open(os.path.join(output, f'{type}_table.html'), 'w', encoding='utf-8') as file:
+                file.write(str(soup))
+
+
+    def process_tables(self, input, output, filename, split_answer_tables=True, split_long_tables=True, output_stats=True, output_debug=False, reset = False, save_output=False):
         self.load_html(input)  # Load the HTML file
         tables = self.extract_tables()
         total_tables = len(tables)
@@ -446,16 +468,21 @@ class TableModule:
             self.output_statistics(output, filename)
         if output_debug:
             self.output_debug(output,filename)
-        self.save_output(output, filename)
-        self.reset()  # Reset the processor for the next file
+        if save_output:
+            self.save_output(output, filename)
+        if reset:
+            self.reset()  # Reset the processor for the next file
 
 
 if __name__ == '__main__':
 
     processor = TableModule()
-    input_folder = r'D:\Work Files\讲义_zip\初中地理'
-    output_folder = r'D:\Work Files\Table Module\表格stats319\初中地理'
-    for filename in tqdm(os.listdir(input_folder), desc=f"Processing HTML Files in folder {input_folder}"):
-        if filename.endswith('.html'):
-            input_html = os.path.join(input_folder, filename)
+    input_folder = r'D:\Work Files\知识清单_zip'
+    output_folder = r'D:\Work Files\Table Module\表格分类3-19k'
+    for root, dirs, files in os.walk(input_folder):
+        html_files = [file for file in files if file.endswith('.html')]
+        for filename in tqdm(html_files, desc=f"Processing HTML Files in {root}"):
+            input_html = os.path.join(root, filename)  # Get full path to the HTML file
             processor.process_tables(input_html, output_folder, filename)
+    
+    processor.save_output2one(output_folder)
