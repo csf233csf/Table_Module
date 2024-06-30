@@ -1,5 +1,5 @@
-3/11：
-rewrote everything to **tablemodule.py**
+
+Rewrote everything to **tablemodule.py**
 
 Rewrote the pipeline, cleaner code and better readability.
 
